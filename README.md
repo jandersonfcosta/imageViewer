@@ -1,2 +1,2 @@
-# imageViewer
+# Image Viewer
 Image Viewer
