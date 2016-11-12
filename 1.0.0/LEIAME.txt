@@ -1,0 +1,2 @@
+Em cada servidor front-end no arquivo c:\Program Files\Common Files\Microsoft Shared\Web Server Extensions\12\TEMPLATE\LAYOUTS\portal.js
+foi implementada e chamda a função _imageViewer() que habilita o visualizador nas páginas do portal e PWA.
