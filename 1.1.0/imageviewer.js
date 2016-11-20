@@ -1,6 +1,6 @@
 /*
 	Image Viewer
-	Descrição: Visualizador de imagens para browser.
+	Descrição: Visualizador de imagens.
 	Criado por Janderson Costa.
 
 	Uso: ver demo.html
@@ -12,22 +12,15 @@
 
 function imageViewer(args) {
 	var body = document.body,
-		img,
+		image,
 		overlay,
-		imgHeader,
-		navPrev,
-		navNext,
+		header,
+		buttonPrev,
+		buttonNext,
 		margin = 25,
-		imgIndex = 0,
+		imageLinkIndex = 0,
 		zoomFactor = 0.2,
-		sizeLimit = 12,
-
-		// drag
-		startX = 0,
-		startY = 0,
-		offsetX = 0,
-		offsetY = 0,
-		dragElement;
+		sizeLimit = 12;
 
 
 	// CONFIGURAÇÃO
@@ -38,27 +31,27 @@ function imageViewer(args) {
 	// FUNÇÕES
 
 	function config() {
-		setImg();
-		setImgHeader();
+		setHeader();
+		setImage();
 		setOverlay();
-		setSideNav();
-		setCSS(args.css);
+		setNavigationButtons();
+		loadStyle(args.css);
 
 		// links
 		for (var i = 0; i < args.links.length; i++) {
-			var link = args.links[i];
+			var imageLink = args.links[i];
 
-			link.setAttributeNode(document.createAttribute("url"));
-			link.setAttributeNode(document.createAttribute("index"));
-			link.url = link.href;
-			link.index = i;
-			link.href = "javascript:";
-			link.onclick = function() {
-				img.style.cursor = "wait";
+			imageLink.setAttributeNode(document.createAttribute("url"));
+			imageLink.setAttributeNode(document.createAttribute("index"));
+			imageLink.url = imageLink.href;
+			imageLink.index = i;
+			imageLink.href = "javascript:";
+			imageLink.onclick = function() {
+				image.style.cursor = "wait";
 				overlay.style.cursor = "wait";
-				navPrev.style.cursor = "wait";
-				navNext.style.cursor = "wait";
-				imgIndex = this.index;
+				buttonPrev.style.cursor = "wait";
+				buttonNext.style.cursor = "wait";
+				imageLinkIndex = this.index;
 
 				var fileExt = this.url.substr(this.url.lastIndexOf("."));
 				show(this.url, this.innerText + (fileExt ? fileExt.toLowerCase() : ""));
@@ -66,49 +59,53 @@ function imageViewer(args) {
 		}
 	}
 
-	function setImg() {
-		img = document.createElement("img");
-		img.border = 0;
-		img.className = "iv-img";
-		img.setAttributeNode(document.createAttribute("realHeight"));
-		img.setAttributeNode(document.createAttribute("realWidth"));
+	function setImage() {
+		image = document.createElement("img");
+		image.border = 0;
+		image.className = "iv-image";
+		image.setAttributeNode(document.createAttribute("realHeight"));
+		image.setAttributeNode(document.createAttribute("realWidth"));
+		image.onload = afterShowImage;
+		image.onmousewheel = zoom;
+		image.onmousedown = dragImage;
+		image.ondblclick = toggleImageSize;
+		image.onmouseup = function() {
+			// dependência para drag
+			document.onmousemove = null;
+			document.onselectstart = null;
+			image.ondragstart = null;
+		};
 
-		body.appendChild(img);
-
-		img.onload = afterShow;
-		img.onmousewheel = zoom;
-		img.onmousedown = drag;
-		img.onmouseup = mouseUp;
-		img.ondblclick = toggleSize;
+		body.appendChild(image);
 	}
 
-	function setImgHeader() {
-		imgHeader = document.createElement("div");
-		imgHeader.className = "iv-img-header";
-		imgHeader.style.display = "none";
-		imgHeader.innerHTML = '<span id="iv-image-name"></span><span id="iv-button-close">✖</span>';
-		body.appendChild(imgHeader);
+	function setHeader() {
+		header = document.createElement("div");
+		header.className = "iv-image-header";
+		header.style.display = "none";
+		header.innerHTML = '<span id="iv-image-name"></span><span id="iv-button-close">✖</span>';
+		body.appendChild(header);
 
 		// botão fechar
 		document.getElementById("iv-button-close").onclick = exit;
 	}
 
-	function setSideNav() {
-		navPrev = document.createElement("div");
-		navPrev.className = "iv-nav iv-nav-prev";
-		navPrev.style.display = "none";
-		navPrev.onclick = prev;
-		navPrev.onmouseover = function() { navPrev.style.filter = "alpha(opacity=80)"; }; // IE5
-		navPrev.onmouseout = function() { navPrev.style.filter = "alpha(opacity=60)"; };
-		body.appendChild(navPrev);
+	function setNavigationButtons() {
+		buttonPrev = document.createElement("div");
+		buttonPrev.className = "iv-nav iv-nav-prev";
+		buttonPrev.style.display = "none";
+		buttonPrev.onclick = showPreviousImage;
+		buttonPrev.onmouseover = function() { buttonPrev.style.filter = "alpha(opacity=80)"; }; // IE5
+		buttonPrev.onmouseout = function() { buttonPrev.style.filter = "alpha(opacity=60)"; };
+		body.appendChild(buttonPrev);
 
-		navNext = document.createElement("div");
-		navNext.className = "iv-nav iv-nav-next";
-		navNext.style.display = "none";
-		navNext.onclick = next;
-		navNext.onmouseover = function() { navNext.style.filter = "alpha(opacity=80)"; }; // IE5
-		navNext.onmouseout = function() { navNext.style.filter = "alpha(opacity=60)"; };
-		body.appendChild(navNext);
+		buttonNext = document.createElement("div");
+		buttonNext.className = "iv-nav iv-nav-next";
+		buttonNext.style.display = "none";
+		buttonNext.onclick = showNextImage;
+		buttonNext.onmouseover = function() { buttonNext.style.filter = "alpha(opacity=80)"; }; // IE5
+		buttonNext.onmouseout = function() { buttonNext.style.filter = "alpha(opacity=60)"; };
+		body.appendChild(buttonNext);
 	}
 
 	function setOverlay() {
@@ -122,164 +119,161 @@ function imageViewer(args) {
 		body.appendChild(overlay);
 	}
 
-	function setCSS(href) {
-		var link = document.createElement("link");
-		link.type = "text/css";
-		link.rel = "stylesheet";
-		link.href = href;
+	function loadStyle(href) {
+		var styleLink = document.createElement("link");
+		styleLink.type = "text/css";
+		styleLink.rel = "stylesheet";
+		styleLink.href = href;
 
-		document.getElementsByTagName("head")[0].appendChild(link);
+		document.getElementsByTagName("head")[0].appendChild(styleLink);
 	}
 
-	function keyCommands() {
+	function runActionByKey() {
 		try {
-			// próxima
 			if (event.keyCode === 39)
-				next();
+				showNextImage();
 
-			// anterior
 			if (event.keyCode === 37)
-				prev();
+				showPreviousImage();
 
-			// sair
 			if (event.keyCode === 27)
 				exit();
 		} catch(ex) {}
 	}
 
-	function show(imgSrc, imgName) {
+	function show(imageSrc, imageName) {
 		showScrollBars(false);
 
 		if (args.links.length > 1) {
-			navPrev.style.display = "block";
-			navNext.style.display = "block";
-			setNavPosition();
+			buttonPrev.style.display = "block";
+			buttonNext.style.display = "block";
+			positionNavigationButtons();
 		}
 
 		overlay.style.display = "block";
 		resizeOverlay();
 
-		imgHeader.style.display = "block";
-		document.getElementById("iv-image-name").innerHTML = imgName;
+		header.style.display = "block";
+		document.getElementById("iv-image-name").innerHTML = imageName;
 
-		img.removeAttribute("src");
-		img.removeAttribute("height");
-		img.removeAttribute("width");
-		img.style.top = -img.height;
-		img.style.left = -img.width;
-		img.style.visibility = "hidden";
-		img.src = imgSrc;
+		image.removeAttribute("src");
+		image.removeAttribute("height");
+		image.removeAttribute("width");
+		image.style.top = -image.height;
+		image.style.left = -image.width;
+		image.style.visibility = "hidden";
+		image.src = imageSrc;
 
 		// remove/adiciona eventos
-		removeEvent(window, "resize", resize);
-		removeEvent(document, "keydown", keyCommands);
-		addEvent(window, "resize", resize);
-		addEvent(document, "keydown", keyCommands);
+		removeEvent(window, "resize", resizeImage);
+		removeEvent(document, "keydown", runActionByKey);
+		addEvent(window, "resize", resizeImage);
+		addEvent(document, "keydown", runActionByKey);
 	}
 
-	function next() {
-		if (img.style.display !== "none") {
-			var link = args.links[Number(imgIndex) + 1];
+	function afterShowImage() {
+		image.realHeight = image.height;
+		image.realWidth = image.width;
+		resizeImage();
 
-			if (!link)
-				link = args.links[0];
-
-			link.click();
-		}
-	}
-
-	function prev() {
-		if (img.style.display !== "none") {
-			var link = args.links[Number(imgIndex) - 1];
-
-			if (!link)
-				link = args.links[args.links.length - 1];
-
-			link.click();
-		}
-	}
-
-	function afterShow() {
-		img.realHeight = img.height;
-		img.realWidth = img.width;
-		resize();
-
-		img.style.visibility = "visible";
-		img.style.cursor = "move";
+		image.style.visibility = "visible";
+		image.style.cursor = "move";
 		overlay.style.cursor = "auto";
-		navPrev.style.cursor = "pointer";
-		navNext.style.cursor = "pointer";
+		buttonPrev.style.cursor = "pointer";
+		buttonNext.style.cursor = "pointer";
 	}
 
-	function toggleSize() {
-		if (img.height === img.realHeight) {
-			fitToScreen();
+	function showNextImage() {
+		if (image.style.display !== "none") {
+			var imageLink = args.links[Number(imageLinkIndex) + 1];
+
+			if (!imageLink)
+				imageLink = args.links[0];
+
+			imageLink.click();
+		}
+	}
+
+	function showPreviousImage() {
+		if (image.style.display !== "none") {
+			var imageLink = args.links[Number(imageLinkIndex) - 1];
+
+			if (!imageLink)
+				imageLink = args.links[args.links.length - 1];
+
+			imageLink.click();
+		}
+	}
+
+	function toggleImageSize() {
+		if (image.height === image.realHeight) {
+			fitImageToScreen();
 		} else {
 			// tamanho real
-			img.removeAttribute("width");
-			img.removeAttribute("height");
-			img.width = img.realWidth;
-			img.height = img.realHeight;
-			center();
+			image.removeAttribute("width");
+			image.removeAttribute("height");
+			image.width = image.realWidth;
+			image.height = image.realHeight;
+			centerImage();
 		}
 	}
 
-	function resize() {
-		fitToScreen();
+	function resizeImage() {
+		fitImageToScreen();
 		resizeOverlay();
-		setNavPosition();
+		positionNavigationButtons();
 	}
 
-	function fitToScreen() {
+	function fitImageToScreen() {
 		var ch = document.body.clientHeight,
 			cw = document.body.clientWidth;
 
-		img.removeAttribute("width");
+		image.removeAttribute("width");
 
-		if (img.realHeight > ch) {
-			img.height = ch - margin;
+		if (image.realHeight > ch) {
+			image.height = ch - margin;
 		}
 
-		if (img.width > cw) {
-			img.removeAttribute("height");
-			img.width = cw - margin;
+		if (image.width > cw) {
+			image.removeAttribute("height");
+			image.width = cw - margin;
 		}
 
-		center();
+		centerImage();
 	}
 
-	function center() {
-		img.style.top = (document.body.clientHeight - img.height) / 2;
-		img.style.left = (document.body.clientWidth - img.width) / 2;
+	function centerImage() {
+		image.style.top = (document.body.clientHeight - image.height) / 2;
+		image.style.left = (document.body.clientWidth - image.width) / 2;
 	}
 
 	function zoom(e) {
 		var wheelDelta = event.wheelDelta;
 
 		if (wheelDelta > 0) {
-			if (img.width / img.realWidth < sizeLimit) { // limite
-				img.width = img.width * (1 + zoomFactor);
-				img.removeAttribute("height");
-				img.height = img.height;
+			if (image.width / image.realWidth < sizeLimit) { // limite
+				image.width = image.width * (1 + zoomFactor);
+				image.removeAttribute("height");
+				image.height = image.height;
 			}
 		} else {
-			if (img.realWidth / img.width < sizeLimit) {
-				img.width = img.width * (1 - zoomFactor);
-				img.removeAttribute("height");
-				img.height = img.height;
+			if (image.realWidth / image.width < sizeLimit) {
+				image.width = image.width * (1 - zoomFactor);
+				image.removeAttribute("height");
+				image.height = image.height;
 			}
 		}
 
-		center();
+		centerImage();
 	}
 
-	function setNavPosition() {
+	function positionNavigationButtons() {
 		var w = 30, h = 90;
 
-		navPrev.style.left = 0;
-		navPrev.style.top = document.body.clientHeight / 2 - h / 2;
-		navNext.style.left = document.body.clientWidth - w;
-		navNext.style.top = document.body.clientHeight / 2 - h / 2;
+		buttonPrev.style.left = 0;
+		buttonPrev.style.top = document.body.clientHeight / 2 - h / 2;
+		buttonNext.style.left = document.body.clientWidth - w;
+		buttonNext.style.top = document.body.clientHeight / 2 - h / 2;
 	}
 
 	function resizeOverlay() {
@@ -288,30 +282,37 @@ function imageViewer(args) {
 		overlay.style.height = document.body.clientHeight;
 	}
 
-	function drag(e) {
+	function dragImage(e) {
+		var target,
+			startX = 0,
+			startY = 0,
+			offsetX = 0,
+			offsetY = 0;
 
 		// IE is retarded and doesn't pass the event object
 		if (!e) e = window.event;
 
 		// IE uses srcElement, others use target
-		var target = e.target ? e.target : e.srcElement;
+		target = e.target ? e.target : e.srcElement;
 
 		// for IE, left click === 1
 		// for Firefox, left click === 0
-		if ((e.button === 1 && window.event !== null || e.button === 0) && target.className === img.className) {
+		if ((e.button === 1 && window.event !== null || e.button === 0) && target.className === image.className) {
 			// grab the mouse position
 			startX = e.clientX;
 			startY = e.clientY;
 
 			// grab the clicked element's position
-			offsetX = getOffset(target.style.left);
-			offsetY = getOffset(target.style.top);
-
-			// we need to access the element in OnMouseMove
-			dragElement = target;
+			offsetX = getOffset(image.style.left);
+			offsetY = getOffset(image.style.top);
 
 			// tell our code to start moving the element with the mouse
-			document.onmousemove = mouseMove;
+			document.onmousemove = function (e) {
+				if (!e) e = window.event;
+
+				image.style.left = offsetX + e.clientX - startX;
+				image.style.top = offsetY + e.clientY - startY;
+			};
 
 			// cancel out any text selections
 			document.body.focus();
@@ -320,7 +321,7 @@ function imageViewer(args) {
 			document.onselectstart = function() { return false; };
 
 			// prevent IE from trying to drag an image
-			target.ondragstart = function() { return false; };
+			image.ondragstart = function() { return false; };
 
 			// prevent text selection (except IE)
 			return false;
@@ -332,34 +333,16 @@ function imageViewer(args) {
 		}
 	}
 
-	function mouseMove(e) {
-		if (!e) e = window.event;
-
-		// dependência para drag
-		dragElement.style.left = (offsetX + e.clientX - startX);
-		dragElement.style.top = (offsetY + e.clientY - startY);
-	}
-
-	function mouseUp() {
-		// dependência para drag
-		if (dragElement !== null) {
-			document.onmousemove = null;
-			document.onselectstart = null;
-			dragElement.ondragstart = null;
-			dragElement = null;
-		}
-	}
-
-	function showScrollBars(display) {
+	function showScrollBars(show) {
 		var overflow = "auto", scroll = "yes";
 
-		if (display !== undefined && display === false) {
+		if (show !== undefined && show === false) {
 			overflow = "hidden";
 			scroll = "no";
 		}
 
-		document.documentElement.style.overflow = overflow;// firefox, chrome
-		document.body.scroll = scroll;// ie only
+		document.documentElement.style.overflow = overflow; // firefox, chrome
+		document.body.scroll = scroll; // ie only
 		document.body.scrollTop = 0;
 		document.body.scrollLeft = 0;
 	}
@@ -367,29 +350,29 @@ function imageViewer(args) {
 	function exit() {
 		// oculta os elementos
 		overlay.style.display = "none";
-		navPrev.style.display = "none";
-		navNext.style.display = "none";
-		imgHeader.style.display = "none";
-		img.style.visibility = "hidden";
+		buttonPrev.style.display = "none";
+		buttonNext.style.display = "none";
+		header.style.display = "none";
+		image.style.visibility = "hidden";
 
 		// remove eventos
 		removeEvent(window, "resize", resizeOverlay);
-		removeEvent(document, "keydown", keyCommands);
+		removeEvent(document, "keydown", runActionByKey);
 
 		showScrollBars();
 	}
 
-	function addEvent(element, event, f) {
+	function addEvent(element, event, func) {
 		if (element.addEventListener) // for all major browsers, except IE 8 and earlier
-			element.addEventListener(event, f);
+			element.addEventListener(event, func);
 		else if (element.attachEvent) // for IE 8 and earlier versions
-			element.attachEvent("on" + event, f);
+			element.attachEvent("on" + event, func);
 	}
 
-	function removeEvent(element, event, f) {
+	function removeEvent(element, event, func) {
 		if (element.removeEventListener)
-			element.removeEventListener(event, f, false);
+			element.removeEventListener(event, func, false);
 		else if (element.detachEvent)
-			element.detachEvent('on' + event, f);
+			element.detachEvent('on' + event, func);
 	}
 }

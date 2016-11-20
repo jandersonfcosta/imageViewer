@@ -1,4 +1,4 @@
-.iv-img-header {
+.iv-image-header {
 	font-family: sans-serif;
 	font-size: 10pt;
 	color: #fff;
@@ -15,7 +15,7 @@
 	white-space: nowrap;
 }
 
-.iv-img-header #iv-button-close {
+.iv-image-header #iv-button-close {
 	color: #ddd;
 	font-family: sans-serif;
 	font-weight: normal;
@@ -26,11 +26,11 @@
 	margin-left: 11px;
 }
 
-.iv-img-header #iv-button-close:hover {
+.iv-image-header #iv-button-close:hover {
 	color: #fff;
 }
 
-.iv-img {
+.iv-image {
 	visibility: hidden;
 	position: absolute;
 	top: 0;
